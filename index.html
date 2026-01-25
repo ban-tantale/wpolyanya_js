@@ -1218,6 +1218,8 @@
                 result.normalise();
                 return result;
             }
+            get dx() { return this._dx; }
+            get dy() { return this._dy; }
             normalise() {
                 const distance = Math.sqrt((this._dx * this._dx) + (this._dy * this._dy));
                 this._dx = this._dx / distance;
@@ -1225,6 +1227,33 @@
             }
             scalar_product(v) {
                 return (this._dx * v._dy) - (this._dy * v._dx);
+            }
+            translate(point) {
+                return new Point(point.x + this.dx, point.y + this.dy);
+            }
+        }
+        class Line {
+            // y = a + b * x
+            constructor(point1, point2) {
+                // (1) y1 = a + (b * x1)
+                // (2) y2 = a + (b * x2)
+                // => a = y1 - (b * x1) = y2 - (b * x2)
+                // => b = (y2 - y1) / (x2 - x1)
+                this._b = (point2.y - point1.y) / (point2.x - point1.x);
+                this._a = point1.y - (this._b * point1.x);
+            }
+            static intersection(line1, line2) {
+                // return null if the lines are parallel.
+                if (line1._b == line2._b) {
+                    return null;
+                }
+                // (1) y = a1 + (b1 * x)
+                // (2) y = a2 + (b2 * x)
+                // => 0 = (a1 - a2) + ((b1 - b2) * x)
+                // => x = (a1 - a2) / (b2 - b1)
+                const x = (line1._a - line2._a) / (line2._b - line1._b);
+                const y = line1._a + (line1._b * x);
+                return new Point(x, y);
             }
         }
         class Edge {
@@ -1237,6 +1266,7 @@
                 v2.add_in(this);
                 this._opposite = null; // The opposite edge
                 this._poly = null; // The polygon on the right
+                this._line = new Line(v1, v2);
 
                 // checks if the opposite edge exists
                 for (let i = 0; i < v1.in.length; i++) {
@@ -1252,6 +1282,32 @@
             get v2() { return this._v2; }
             get vector() { return this._vector; }
             set_poly(p) { this._poly = p; }
+            intersection(point, vector) {
+                // Returns the intersection on the line represented by this edge
+                // but that could be outside the edge.
+                // Can return <null> if the edge and the vector are parallel
+
+                if (this._v1.x == this._v2.x) { // vertical edge
+                    if (vector.dx == 0) {
+                        return null; // parallel
+                    }
+                    // return (x,y) such that, for some k,
+                    // - (1) x = point.x + k * vector.dx
+                    // - (2) y = point.y + k * vector.dy
+                    // - (3) x = this._v1.x
+                    // (1) and (3) => k = (this._v1.x - point.x) / vector.dx
+                    // and (2) => y = point.y + [(this._v1.x - point.x) / vector.dx] * vector.dy
+                    const x = this._v1.x;
+                    const y = point.y + [(x - point.x) / vector.dx] * vector.dy
+                    return new Point(x, y);
+                }
+
+                if (vector.dx == 0) {
+                    // TODO
+                }
+                const line = new Line(point, vector.translate(point));
+                return Line.intersection(this._line, line);
+            }
         }
         class Polygon {
             constructor(vertices, weight) {
@@ -1268,6 +1324,7 @@
             }
             get weight() { return this._weight; }
             get nb_vertices() { return this._edges.length; }
+            get edges() { return this._edges; }
             vertex(index) { return this._edges[index].v1; }
             contains(p) {
                 for (let i = 0; i < this.nb_vertices; i++) {
@@ -1333,7 +1390,7 @@
                 this._max_weight = 1;
                 this._ratio = 1;
 
-                this._point_width = 10;
+                this._point_width = 2;
                 this._point_colour = "#FF0000";
 
                 this._poly_colour = null;
@@ -1341,11 +1398,11 @@
                 // this._weight_to_colour = {};
             }
 
-            position(event) {
-                return [
+            point_of_event(event) {
+                return new Point(
                     (event.clientX - this._rect.left) / this._zoom - this._dx,
                     (this._rect.bottom - event.clientY) / this._zoom - this._dy
-                ];
+                );
             }
 
             set_point_colour(colour) { this._point_colour = colour; }
@@ -1403,7 +1460,7 @@
                 const pos = this._position(point);
                 this._ctx.fillStyle = this._point_colour;
                 this._ctx.beginPath();
-                this._ctx.ellipse(pos[0], pos[1], this._point_width / this._zoom, this._point_width / this._zoom, 0, 0, Math.PI * 2);
+                this._ctx.ellipse(pos[0], pos[1], this._point_width, this._point_width, 0, 0, Math.PI * 2);
                 this._ctx.fill();
             }
 
@@ -1441,11 +1498,43 @@
         // Events
         //
 
+        // Event that verifies the implementation of intersection
+        let test_intersection_point1 = null;
+        let test_intersection_point2 = null;
+        let test_intersection_poly = null;
+        function test_intersection_click(event) {
+            const point = camera.point_of_event(event);
+
+            if (test_intersection_point1 == null) {
+                test_intersection_point1 = point;
+                test_intersection_poly = map.containing_poly(point);
+                camera.set_point_colour('#ff0000');
+                camera.set_point_width(5);
+                camera.draw_point(test_intersection_point1);
+                return;
+            }
+            if (test_intersection_point2 == null) {
+                test_intersection_point2 = point;
+                const vec = Vector.from_points(test_intersection_point1, test_intersection_point2);
+                const edge = test_intersection_poly.edges[0];
+                const intersection = edge.intersection(test_intersection_point1, vec);
+                camera.set_point_colour('#00ff00');
+                camera.draw_point(test_intersection_point2);
+                camera.set_point_colour('#0000ff');
+                camera.draw_point(intersection);
+                test_intersection_point1 = null;
+                test_intersection_point2 = null;
+                return;
+            }
+            // Should not happen
+            test_intersection_point1 = null;
+            test_intersection_point2 = null;
+        }
+
         function click(event) {
-            let pos = camera.position(event);
+            const p = camera.point_of_event(event);
             camera.set_point_colour('#FF0000');
             camera.set_point_width(100);
-            const p = new Point(pos[0], pos[1]);
             camera.draw_point(p);
             const poly = map.containing_poly(p);
             if (poly == null) {
@@ -1455,7 +1544,7 @@
                 camera.draw_poly(poly);
             }
         }
-        canvas.addEventListener('click', click);
+        canvas.addEventListener('click', test_intersection_click);
 
         const pp = complex_map();
         const map = new Map(pp[0], pp[1]);
