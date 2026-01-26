@@ -1182,6 +1182,14 @@
         // GEOMETRY
         //
 
+        const Position = {
+            BEFORE: 0,
+            AT_START: 1,
+            INSIDE: 2,
+            AT_END: 3,
+            AFTER: 4
+        };
+        const EPSILON_EQUALS = 0.01;
 
         class Point {
             constructor(x, y) {
@@ -1193,6 +1201,39 @@
             right_of(edge) {
                 let v2 = Vector.from_points(edge.v1, this);
                 return edge.vector.scalar_product(v2) <= 0;
+            }
+            relative_position(edge) {
+                // Position of this point relative to the specified edge
+
+                // Is `this` on one of the points of the edge?
+                let p1 = edge.v1;
+                if ((p1.x < this.x + EPSILON_EQUALS) && (this.x < p1.x + EPSILON_EQUALS)) {
+                    return Position.AT_START;
+                }
+                let p2 = edge.v2;
+                if ((p2.x < this.x + EPSILON_EQUALS) && (this.x < p2.x + EPSILON_EQUALS)) {
+                    return Position.AT_END;
+                }
+
+                // By default, uses `x` for comparison but will use `y` if `x`s are equal.
+                let pos1 = p1.x;
+                let pos2 = p2.x;
+                let pos = this.x;
+                if (pos1 == pos2) {
+                    pos1 = p1.y;
+                    pos2 = p2.y;
+                    pos = this.y;
+                }
+                if (pos1 > pos2) {
+                    // Negate all positions.  The result is unchanged, but now pos1 < pos2
+                    pos1 = - pos1;
+                    pos2 = - pos2;
+                    pos = - pos;
+                }
+                if (pos < pos1) { return Position.BEFORE; }
+                if (pos > pos2) { return Position.AFTER; }
+
+                return Position.INSIDE;
             }
         }
         class Vertex {
@@ -1498,7 +1539,7 @@
         // Events
         //
 
-        // Event that verifies the implementation of intersection
+        // Function that verifies the implementation of intersection
         let test_intersection_point1 = null;
         let test_intersection_point2 = null;
         let test_intersection_poly = null;
@@ -1531,6 +1572,40 @@
             test_intersection_point2 = null;
         }
 
+        // Function that verifies the implementation of relative_position
+        let test_relative_point1 = null;
+        let test_relative_point2 = null;
+        let test_relative_poly = null;
+        function test_relative_click(event) {
+            const point = camera.point_of_event(event);
+
+            if (test_relative_point1 == null) {
+                test_relative_point1 = point;
+                test_relative_poly = map.containing_poly(point);
+                camera.set_point_colour('#ff0000');
+                camera.set_point_width(5);
+                camera.draw_point(test_relative_point1);
+                return;
+            }
+            if (test_relative_point2 == null) {
+                test_relative_point2 = point;
+                camera.set_point_colour('#00ff00');
+                camera.draw_point(test_relative_point2);
+                const vec = Vector.from_points(test_relative_point1, test_relative_point2);
+                test_relative_poly.edges.forEach(edge => {
+                    const intersection = edge.intersection(test_relative_point1, vec);
+                    const rel = intersection.relative_position(edge);
+                    if ((rel == Position.AT_START) || (rel == Position.AT_END) || (rel == Position.INSIDE)) {
+                        camera.set_point_colour('#00ffff');
+                        camera.draw_point(intersection);
+                    }
+                });
+                test_relative_point1 = null;
+                test_relative_point2 = null;
+            }
+
+        }
+
         function click(event) {
             const p = camera.point_of_event(event);
             camera.set_point_colour('#FF0000');
@@ -1544,7 +1619,7 @@
                 camera.draw_poly(poly);
             }
         }
-        canvas.addEventListener('click', test_intersection_click);
+        canvas.addEventListener('click', test_relative_click);
 
         const pp = complex_map();
         const map = new Map(pp[0], pp[1]);
