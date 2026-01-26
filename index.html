@@ -1497,6 +1497,16 @@
                 this._ctx.lineTo(pos[0], pos[1]);
             }
 
+            left() { this._dx -= 1; }
+            right() { this._dx += 1; }
+            up() { this._dy += 1; }
+            down() { this._dy -= 1; }
+
+            clear() {
+                this._ctx.fillStyle = "#ffffff";
+                this._ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
             draw_point(point) {
                 const pos = this._position(point);
                 this._ctx.fillStyle = this._point_colour;
@@ -1526,7 +1536,7 @@
                     this.draw_poly(poly);
                 });
                 map.vertices.forEach(vertex => {
-                    this.set_point_colour("#0000FF");
+                    this.set_point_colour("#FFFF00");
                     this.draw_point(vertex);
                 });
             }
@@ -1620,6 +1630,21 @@
             }
         }
         canvas.addEventListener('click', test_relative_click);
+
+        function deal_with_keys(event) {
+            let modified = false;
+            if (event.code == "ArrowLeft") { camera.left(); }
+            else if (event.code == "ArrowRight") { camera.right(); }
+            else if (event.code == "ArrowUp") { camera.up(); }
+            else if (event.code == "ArrowDown") { camera.down(); }
+            else {
+                return;
+            }
+
+            camera.clear();
+            camera.draw_map(map);
+        }
+        onkeyup = deal_with_keys;
 
         const pp = complex_map();
         const map = new Map(pp[0], pp[1]);
