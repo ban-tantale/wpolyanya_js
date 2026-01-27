@@ -81,6 +81,8 @@ class Camera {
     right() { this._dx += 1; }
     up() { this._dy += 1; }
     down() { this._dy -= 1; }
+    zoom() { this._zoom *= 1.2; }
+    unzoom() { this._zoom /= 1.2; }
 
     clear() {
         this._ctx.fillStyle = "#ffffff";

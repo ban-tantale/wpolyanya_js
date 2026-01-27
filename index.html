@@ -10,9 +10,9 @@
     <script src="tests.js"></script>
     <script>
 
-        const canvas = document.getElementById("myCanvas");
-        const ctx = canvas.getContext("2d");
-        ctx.fillStyle = "#FF0000";
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FF0000';
         canvas.height = canvas.width;
         ctx.transform(1, 0, 0, -1, 0, canvas.height)
 
@@ -35,10 +35,12 @@
 
         function deal_with_keys(event) {
             let modified = false;
-            if (event.code == "ArrowLeft") { camera.left(); }
-            else if (event.code == "ArrowRight") { camera.right(); }
-            else if (event.code == "ArrowUp") { camera.up(); }
-            else if (event.code == "ArrowDown") { camera.down(); }
+            if (event.code == 'ArrowLeft') { camera.left(); }
+            else if (event.code == 'ArrowRight') { camera.right(); }
+            else if (event.code == 'ArrowUp') { camera.up(); }
+            else if (event.code == 'ArrowDown') { camera.down(); }
+            else if (event.shiftKey && (event.code == 'KeyZ')) { camera.unzoom(); }
+            else if (event.code == 'KeyZ') { camera.zoom(); }
             else {
                 return;
             }
@@ -53,7 +55,7 @@
         camera.compute_weight_colours(map);
         camera.draw_map(map);
 
-        window.alert('coucou ');
+        window.alert('coucou');
     </script>
 
 </body>
