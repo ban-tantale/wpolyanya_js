@@ -52,19 +52,19 @@ class Point {
         return Position.INSIDE;
     }
 }
-class Vertex {
+
+class Vertex extends Point {
     constructor(p) {
-        this._p = p;
+        super(p.x, p.y);
         this._out = [];
         this._in = [];
     }
-    get x() { return this._p.x; }
-    get y() { return this._p.y; }
     get out() { return this._out; }
     get in() { return this._in; }
     add_out(e) { this._out.push(e); }
     add_in(e) { this._in.push(e); }
 }
+
 class Vector {
     constructor(dx, dy) {
         this._dx = dx;
@@ -89,6 +89,7 @@ class Vector {
         return new Point(point.x + this.dx, point.y + this.dy);
     }
 }
+
 class Line {
     // y = a + b * x
     constructor(point1, point2) {
@@ -113,6 +114,7 @@ class Line {
         return new Point(x, y);
     }
 }
+
 class Edge {
     constructor(v1, v2) {
         this._v1 = v1;
@@ -166,6 +168,7 @@ class Edge {
         return Line.intersection(this._line, line);
     }
 }
+
 class Polygon {
     constructor(vertices, weight) {
         this._weight = weight;
@@ -192,6 +195,7 @@ class Polygon {
         return true;
     }
 }
+
 class Map {
     // Input:
     // - list of `k` vertices `[[x1,y1], ..., [xk,yk]]`
