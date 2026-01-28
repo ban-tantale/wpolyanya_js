@@ -77,16 +77,28 @@ class Vector {
     }
     get dx() { return this._dx; }
     get dy() { return this._dy; }
+
     normalise() {
         const distance = Math.sqrt((this._dx * this._dx) + (this._dy * this._dy));
         this._dx = this._dx / distance;
         this._dy = this._dy / distance;
     }
+
     scalar_product(v) {
         return (this._dx * v._dy) - (this._dy * v._dx);
     }
+
     translate(point) {
         return new Point(point.x + this.dx, point.y + this.dy);
+    }
+
+    static sin(v1, v2) {
+        // Assumes normalised vectors!
+        return (v1.dx * v2.dy) - (v2.dx * v1.dy);
+    }
+
+    get to_html() {
+        return "&lt;" + this.dx + "," + this.dy + "&gt;";
     }
 }
 
@@ -121,6 +133,7 @@ class Edge {
         this._v2 = v2;
         this._vector = Vector.from_points(v1, v2);
         this._vector.normalise();
+        this._ortho = new Vector(-this._vector.dy, this._vector.dx);
         v1.add_out(this);
         v2.add_in(this);
         this._opposite = null; // The opposite edge
@@ -137,10 +150,13 @@ class Edge {
             }
         }
     }
+
     get v1() { return this._v1; }
     get v2() { return this._v2; }
     get vector() { return this._vector; }
+
     set_poly(p) { this._poly = p; }
+
     intersection(point, vector) {
         // Returns the intersection on the line represented by this edge
         // but that could be outside the edge.
@@ -166,6 +182,23 @@ class Edge {
         }
         const line = new Line(point, vector.translate(point));
         return Line.intersection(this._line, line);
+    }
+
+    through(incoming_vector) {
+        // Assumes a normalised vector aimed at the edge!
+        if (this._opposite == null) { return null; }
+
+        let s = Vector.sin(this._ortho, incoming_vector);
+        let s2 = s * this._poly.weight / this._opposite._poly.weight;
+        if (s2 > 1) { return null; }
+        if (s2 < -1) { return null; }
+
+        let c2 = Math.sqrt(1 - (s2 * s2));
+
+        return new Vector(
+            -(c2 * this._vector.dy + s2 * this._ortho.dy),
+            (c2 * this._vector.dx + s2 * this._ortho.dx)
+        );
     }
 }
 

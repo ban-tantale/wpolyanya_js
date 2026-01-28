@@ -97,6 +97,14 @@ class Camera {
         this._ctx.fill();
     }
 
+    draw_vector(point, vector) {
+        this._ctx.fillStyle = "#FFFF00";
+        this._ctx.beginPath();
+        this._move_to(point);
+        this._line_to(vector.translate(point));
+        this._ctx.stroke();
+    }
+
     draw_poly(poly) {
         if (this._poly_colour == null) {
             this._ctx.fillStyle = this.colour_of_weight(poly.weight);

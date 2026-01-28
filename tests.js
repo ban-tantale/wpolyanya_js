@@ -51,12 +51,25 @@ function test_relative_click(event) {
         camera.set_point_colour('#00ff00');
         camera.draw_point(test_relative_point2);
         const vec = Vector.from_points(test_relative_point1, test_relative_point2);
+        camera.draw_vector(test_relative_point1, vec);
+
         test_relative_poly.edges.forEach(edge => {
             const intersection = edge.intersection(test_relative_point1, vec);
             const rel = intersection.relative_position(edge);
             if ((rel == Position.AT_START) || (rel == Position.AT_END) || (rel == Position.INSIDE)) {
                 camera.set_point_colour('#00ffff');
                 camera.draw_point(intersection);
+                new_vector = edge.through(vec);
+                alert("Moving on");
+                if (new_vector != null) {
+                    debug_message(
+                        "vec = " + vec.to_html + "<br />" +
+                        "new = " + new_vector.to_html + "<br />" +
+                        "edg = " + edge._vector.to_html + "<br />" +
+                        "ort = " + edge._ortho.to_html + "<br />"
+                    );
+                    camera.draw_vector(intersection, new_vector);
+                }
             }
         });
         test_relative_point1 = null;
