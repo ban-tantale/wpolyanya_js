@@ -14,10 +14,12 @@ class Point {
     }
     get x() { return this._x; }
     get y() { return this._y; }
+
     right_of(edge) {
         let v2 = Vector.from_points(edge.v1, this);
         return edge.vector.scalar_product(v2) <= 0;
     }
+
     relative_position(edge) {
         // Position of this point relative to the specified edge
 
@@ -50,6 +52,12 @@ class Point {
         if (pos > pos2) { return Position.AFTER; }
 
         return Position.INSIDE;
+    }
+
+    static distance(p1, p2) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        return Math.sqrt((dx * dx) + (dy * dy));
     }
 }
 
@@ -154,6 +162,7 @@ class Edge {
     get v1() { return this._v1; }
     get v2() { return this._v2; }
     get vector() { return this._vector; }
+    get poly() { return this._poly; }
 
     set_poly(p) { this._poly = p; }
 
@@ -264,5 +273,35 @@ class Map {
             }
         }
         return null;
+    }
+}
+
+class Path {
+    constructor() {
+        // Note there are ways to prevent direct call to the constructor but let's ignore them for now
+        this._end_point = null;
+        this._cost = null;
+        this._prefix = null;
+    }
+
+    get cost() { return this._cost; }
+    get end_point() { return this._end_point; }
+    get is_empty() { return this._prefix == null; }
+    get prefix() { return this._prefix; }
+
+    static from_point(point) {
+        const result = new Path();
+        result._end_point = point;
+        result._cost = 0.0;
+        result._prefix = null;
+        return result;
+    }
+
+    static ex(path, point, poly) {
+        const result = new Path();
+        result._end_point = point;
+        result._cost = path.cost + (poly.weight * Point.distance(path.end_point, point));
+        result._prefix = path;
+        return result;
     }
 }

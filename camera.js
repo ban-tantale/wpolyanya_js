@@ -16,7 +16,7 @@ class Camera {
 
         this._poly_colour = null;
 
-        // this._weight_to_colour = {};
+        this._path_width = 1;
     }
 
     point_of_event(event) {
@@ -29,6 +29,8 @@ class Camera {
     set_point_colour(colour) { this._point_colour = colour; }
     set_point_width(width) { this._point_width = width; }
     set_poly_colour(colour) { this._poly_colour = colour; }
+
+    set_path_width(width) { this._path_width = width; }
 
     compute_weight_colours(map) {
         this._weight_to_colour = {};
@@ -131,5 +133,16 @@ class Camera {
         });
     }
 
+    draw_path(path) {
+        let p = path;
+        while (true) {
+            const point = p.end_point;
+            this.draw_point(point);
+            if (p.is_empty) { break; }
+            p = p.prefix;
+            this._ctx.lineWidth = this._path_width;
+            this.draw_vector(point, Vector.from_points(point, p.end_point));
+        }
+    }
 }
 

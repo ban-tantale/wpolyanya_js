@@ -20,6 +20,7 @@
         ctx.transform(1, 0, 0, -1, 0, canvas.height)
 
         const camera = new Camera(ctx);
+        camera.set_path_width(5);
 
         function click(event) {
             const p = camera.point_of_event(event);

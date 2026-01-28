@@ -51,7 +51,7 @@ function test_relative_click(event) {
         camera.set_point_colour('#00ff00');
         camera.draw_point(test_relative_point2);
         const vec = Vector.from_points(test_relative_point1, test_relative_point2);
-        camera.draw_vector(test_relative_point1, vec);
+        //camera.draw_vector(test_relative_point1, vec);
 
         test_relative_poly.edges.forEach(edge => {
             const intersection = edge.intersection(test_relative_point1, vec);
@@ -60,7 +60,6 @@ function test_relative_click(event) {
                 camera.set_point_colour('#00ffff');
                 camera.draw_point(intersection);
                 new_vector = edge.through(vec);
-                alert("Moving on");
                 if (new_vector != null) {
                     debug_message(
                         "vec = " + vec.to_html + "<br />" +
@@ -68,12 +67,19 @@ function test_relative_click(event) {
                         "edg = " + edge._vector.to_html + "<br />" +
                         "ort = " + edge._ortho.to_html + "<br />"
                     );
-                    camera.draw_vector(intersection, new_vector);
+                    // camera.draw_vector(intersection, new_vector);
+
+                    let path = Path.from_point(test_relative_point1);
+                    path = Path.ex(path, intersection, test_relative_poly);
+                    let new_point = new_vector.translate(intersection);
+                    path = Path.ex(path, new_point, edge._opposite.poly);
+                    camera.draw_path(path);
                 }
             }
         });
         test_relative_point1 = null;
         test_relative_point2 = null;
+        alert('Finished')
     }
 
 }
