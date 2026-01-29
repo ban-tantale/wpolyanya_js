@@ -5,6 +5,7 @@
     <canvas id="myCanvas" width="800" height="6s00" style="border:1px solid grey"></canvas>
 
     <div id="debug"></div>
+    <div id="log" style="border-style: dotted;"></div>
 
     <script src="debug.js"></script>
     <script src="maps.js"></script>
@@ -24,18 +25,10 @@
 
         function click(event) {
             const p = camera.point_of_event(event);
-            camera.set_point_colour('#FF0000');
-            camera.set_point_width(100);
-            camera.draw_point(p);
-            const poly = map.containing_poly(p);
-            if (poly == null) {
-                alert('No polygon!');
-            } else {
-                camera.set_poly_colour('#00FFFF');
-                camera.draw_poly(poly);
-            }
+            log('Click: ' + p);
+            test_relative_click(event);
         }
-        canvas.addEventListener('click', test_relative_click);
+        canvas.addEventListener('click', click);
 
         function deal_with_keys(event) {
             let modified = false;

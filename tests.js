@@ -1,3 +1,18 @@
+function click_poly(event) { // Shows the current poly
+    const p = camera.point_of_event(event);
+    camera.set_point_colour('#FF0000');
+    camera.set_point_width(100);
+    camera.draw_point(p);
+    const poly = map.containing_poly(p);
+    if (poly == null) {
+        alert('No polygon!');
+    } else {
+        camera.set_poly_colour('#00FFFF');
+        camera.draw_poly(poly);
+    }
+}
+
+
 // Function that verifies the implementation of intersection
 let test_intersection_point1 = null;
 let test_intersection_point2 = null;
@@ -71,9 +86,34 @@ function test_relative_click(event) {
 
                     let path = Path.from_point(test_relative_point1);
                     path = Path.ex(path, intersection, test_relative_poly);
-                    let new_point = new_vector.translate(intersection);
-                    path = Path.ex(path, new_point, edge._opposite.poly);
+                    let target = new_vector.translate(intersection);
+                    path = Path.ex(path, target, edge._opposite.poly);
+                    camera.set_path_colour('#000000');
                     camera.draw_path(path);
+
+                    // Checking correctness of Snell
+                    const vec2 = new Vector(vec.dx - 0.01, vec.dy);
+                    let path2 = Path.from_point(test_relative_point1);
+                    let intersection2 = edge.intersection(test_relative_point1, vec2);
+                    path2 = Path.ex(path2, intersection2, test_relative_poly);
+                    path2 = Path.ex(path2, target, edge._opposite.poly);
+                    camera.set_path_colour('#FF0000');
+                    camera.draw_path(path2);
+
+                    const vec3 = new Vector(vec.dx + 0.01, vec.dy);
+                    let path3 = Path.from_point(test_relative_point1);
+                    let intersection3 = edge.intersection(test_relative_point1, vec3);
+                    path3 = Path.ex(path3, intersection3, test_relative_poly);
+                    path3 = Path.ex(path3, target, edge._opposite.poly);
+                    camera.set_path_colour('#FFFF00');
+                    camera.draw_path(path3);
+
+                    debug_message('----<br />'
+                        + "path cost = " + path.cost + "<br />"
+                        + "path cost = " + path2.cost + "<br />"
+                        + "path cost = " + path3.cost + "<br />"
+                        + '----<br />'
+                    );
                 }
             }
         });

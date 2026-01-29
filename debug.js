@@ -7,3 +7,8 @@ function debug_warning(s) {
     const div = document.getElementById('debug');
     div.innerHTML += "<p style=\"background-color:#FFbbbb;\">" + s + "</p>";
 }
+
+function log(s) {
+    const div = document.getElementById('log');
+    div.innerHTML += "<p>" + s + "</p>";
+}
