@@ -75,6 +75,8 @@ function test_relative_click(event) {
                 camera.set_point_colour('#00ffff');
                 camera.draw_point(intersection);
                 new_vector = edge.through(vec);
+
+                // Caerful: This is only correct if intersection is in the same direction as clicked point!
                 if (new_vector != null) {
                     debug_message(
                         "vec = " + vec.to_html + "<br />" +
@@ -82,7 +84,6 @@ function test_relative_click(event) {
                         "edg = " + edge._vector.to_html + "<br />" +
                         "ort = " + edge._ortho.to_html + "<br />"
                     );
-                    // camera.draw_vector(intersection, new_vector);
 
                     let path = Path.from_point(test_relative_point1);
                     path = Path.ex(path, intersection, test_relative_poly);
