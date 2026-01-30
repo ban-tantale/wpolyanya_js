@@ -74,7 +74,11 @@ function test_relative_click(event) {
             if ((rel == Position.AT_START) || (rel == Position.AT_END) || (rel == Position.INSIDE)) {
                 camera.set_point_colour('#00ffff');
                 camera.draw_point(intersection);
-                new_vector = edge.through(vec);
+                let th = edge.through(vec);
+                let position = th[0];
+                if (position == Position.BEFORE) { alert('Before!'); }
+                if (position == Position.AFTER) { alert('AFTER!'); }
+                new_vector = th[1];
 
                 // Caerful: This is only correct if intersection is in the same direction as clicked point!
                 if (new_vector != null) {

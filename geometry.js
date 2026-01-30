@@ -196,19 +196,20 @@ class Edge {
 
     through(incoming_vector) {
         // Assumes a normalised vector aimed at the edge!
+        // Returns: position (BEFORE / AFTER / INSIDE) + vector|null
         if (this._opposite == null) { return null; }
 
         let s = Vector.sin(this._ortho, incoming_vector);
         let s2 = s * this._poly.weight / this._opposite._poly.weight;
-        if (s2 > 1) { return null; }
-        if (s2 < -1) { return null; }
+        if (s2 > 1) { return [Position.BEFORE, null]; }
+        if (s2 < -1) { return [Position.AFTER, null]; }
 
         let c2 = Math.sqrt(1 - (s2 * s2));
 
-        return new Vector(
+        return [Position.INSIDE, new Vector(
             -(c2 * this._vector.dy + s2 * this._ortho.dy),
             (c2 * this._vector.dx + s2 * this._ortho.dx)
-        );
+        )];
     }
 }
 
@@ -250,10 +251,12 @@ class Map {
         vertices.forEach(point => { this._create_vertex(point); });
         polygons.forEach(pd => { this._create_polygon(pd); });
     }
+
     _create_vertex(point) {
         const v = new Vertex(new Point(point[0], point[1]));
         this._vertices.push(v);
     }
+
     _create_polygon(poly_description) {
         const w = poly_description[0];
         const indices = poly_description[1];
@@ -264,8 +267,10 @@ class Map {
         });
         this._polygons.push(new Polygon(vertices, w));
     }
+
     get vertices() { return this._vertices; }
     get polygons() { return this._polygons; }
+    
     containing_poly(p) {
         for (let i = 0; i < this._polygons.length; i++) {
             const poly = this._polygons[i];
@@ -274,6 +279,46 @@ class Map {
             }
         }
         return null;
+    }
+
+    throw_ray(root, direction, edges, compute_path) {
+        // Returns (position, path_or_point_or_null)
+        let current_point = root;
+        let current_direction = direction;
+        let current_path = null;
+        let current_position = Position.INSIDE;
+        if (compute_path) { current_path = Path.from_point(current_point); }
+
+        for (let edge_idx = 0 ; edge_idx < edges.length ; edge_idx++) {
+            const edge = edges[edge_idx];
+            current_point = edge.intersection(current_point, current_direction);
+
+            let current_position = current_point.relative_position(edge);
+            if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+                return (current_position, null, null);
+            }
+
+            if (edge_idx == edges.length -1) {
+                // No need to check that the ray extends beyond the last edge.
+                break;
+            }
+
+            // Compute the new direction
+            current_position, current_direction = edge.through(current_direction);
+            if ((current_direction == Position.BEFORE) || (current_direction == Position.AFTER)) {
+                return (current_direction, null, null);
+            }
+
+            if (compute_path) {
+                current_path = Path.ex(current_path, current_point, edge.incoming_vector);
+            }
+        }
+
+        if (compute_path) {
+            return [current_position, current_path];
+        } else {
+            return [current_position, current_point];
+        }
     }
 }
 
