@@ -18,7 +18,7 @@ class Point {
 
     right_of(edge) {
         let v2 = Vector.from_points(edge.v1, this);
-        return edge.vector.scalar_product(v2) <= 0;
+        return edge.vector.cross_product(v2) <= 0;
     }
 
     relative_position(edge) {
@@ -74,16 +74,29 @@ class Vertex extends Point {
     add_in(e) { this._in.push(e); }
 }
 
+_vector_difference = 0.000001;
 class Vector {
     constructor(dx, dy) {
         this._dx = dx;
         this._dy = dy;
     }
+
     static from_points(p1, p2) {
         const result = new Vector(p2.x - p1.x, p2.y - p1.y);
         result.normalise();
         return result;
     }
+
+    static bissection(vec1, vec2) {
+        return new Vector((vec1.dx + vec2.dx) / 2, (vec1.dy + vec2.dy) / 2);
+    }
+
+    close_to(other_vector) {
+        const result = (Math.abs(this.dx - other_vector.dx) < _vector_difference)
+            && (Math.abs(this.dy - other_vector.dy) < _vector_difference);
+        return result;
+    }
+
     get dx() { return this._dx; }
     get dy() { return this._dy; }
 
@@ -93,8 +106,12 @@ class Vector {
         this._dy = this._dy / distance;
     }
 
-    scalar_product(v) {
+    cross_product(v) {
         return (this._dx * v._dy) - (this._dy * v._dx);
+    }
+
+    scalar_product(v) {
+        return (this._dx * v._dx) + (this._dy * v._dy);
     }
 
     translate(point) {
@@ -109,6 +126,12 @@ class Vector {
     get to_html() {
         return "&lt;" + this.dx + "," + this.dy + "&gt;";
     }
+
+    towards(edge) {
+        // Assuming coming from the right of the edge,
+        // returns whether the vertex is moving towards the line of this edge
+        return this.cross_product(edge.vector) < 0;
+    }
 }
 
 class Line {
@@ -121,6 +144,10 @@ class Line {
         this._b = (point2.y - point1.y) / (point2.x - point1.x);
         this._a = point1.y - (this._b * point1.x);
     }
+
+    get a() { return this._a; }
+    get b() { return this._b; }
+
     static intersection(line1, line2) {
         // return null if the lines are parallel.
         if (line1._b == line2._b) {
@@ -164,6 +191,8 @@ class Edge {
     get v2() { return this._v2; }
     get vector() { return this._vector; }
     get poly() { return this._poly; }
+    get opposite() { return this._opposite; }
+    toString() { return "(" + this.v1 + "," + this.v2 + ")"; }
 
     set_poly(p) { this._poly = p; }
 
@@ -188,7 +217,10 @@ class Edge {
         }
 
         if (vector.dx == 0) {
-            // TODO
+            const x = point.x;
+            const line = new Line(this.v1, this.v2);
+            const y = line.a + line.b * x
+            return new Point(x, y);
         }
         const line = new Line(point, vector.translate(point));
         return Line.intersection(this._line, line);
@@ -270,7 +302,7 @@ class Map {
 
     get vertices() { return this._vertices; }
     get polygons() { return this._polygons; }
-    
+
     containing_poly(p) {
         for (let i = 0; i < this._polygons.length; i++) {
             const poly = this._polygons[i];
@@ -279,46 +311,6 @@ class Map {
             }
         }
         return null;
-    }
-
-    throw_ray(root, direction, edges, compute_path) {
-        // Returns (position, path_or_point_or_null)
-        let current_point = root;
-        let current_direction = direction;
-        let current_path = null;
-        let current_position = Position.INSIDE;
-        if (compute_path) { current_path = Path.from_point(current_point); }
-
-        for (let edge_idx = 0 ; edge_idx < edges.length ; edge_idx++) {
-            const edge = edges[edge_idx];
-            current_point = edge.intersection(current_point, current_direction);
-
-            let current_position = current_point.relative_position(edge);
-            if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
-                return (current_position, null, null);
-            }
-
-            if (edge_idx == edges.length -1) {
-                // No need to check that the ray extends beyond the last edge.
-                break;
-            }
-
-            // Compute the new direction
-            current_position, current_direction = edge.through(current_direction);
-            if ((current_direction == Position.BEFORE) || (current_direction == Position.AFTER)) {
-                return (current_direction, null, null);
-            }
-
-            if (compute_path) {
-                current_path = Path.ex(current_path, current_point, edge.incoming_vector);
-            }
-        }
-
-        if (compute_path) {
-            return [current_position, current_path];
-        } else {
-            return [current_position, current_point];
-        }
     }
 }
 
@@ -349,5 +341,59 @@ class Path {
         result._cost = path.cost + (poly.weight * Point.distance(path.end_point, point));
         result._prefix = path;
         return result;
+    }
+
+    static throw_ray(root, direction, edges, compute_path) {
+        // Returns (position, path_or_point_or_null)
+
+        let current_point = root;
+        let current_direction = direction;
+        let current_path = null;
+        let current_position = Position.INSIDE;
+        if (compute_path) { current_path = Path.from_point(current_point); }
+
+        for (let edge_idx = 0; edge_idx < edges.length; edge_idx++) {
+            const edge = edges[edge_idx];
+
+            // If the ray if not towards the edge, it is either BEFORE or AFTER
+            if (!current_direction.towards(edge)) {
+                if (current_direction.scalar_product(edge.vector) > 0) {
+                    return [Position.AFTER, null];
+                }
+                return [Position.BEFORE, null];
+            }
+
+
+            current_point = edge.intersection(current_point, current_direction);
+
+            let current_position = current_point.relative_position(edge);
+            if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+                return [current_position, null];
+            }
+
+            if (compute_path) {
+                current_path = Path.ex(current_path, current_point, edge.vector);
+            }
+
+            if (edge_idx == edges.length - 1) {
+                // No need to check that the ray extends beyond the last edge.
+                break;
+            }
+
+            // Compute the new direction
+            const th = edge.through(current_direction);
+            current_position = th[0];
+            current_direction = th[1];
+            // current_position, current_direction = edge.through(current_direction);
+            if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+                return [current_position, null];
+            }
+        }
+
+        if (compute_path) {
+            return [current_position, current_path];
+        } else {
+            return [current_position, current_point];
+        }
     }
 }

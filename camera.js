@@ -18,6 +18,8 @@ class Camera {
 
         this._path_width = 1;
         this._path_colour = '#000000';
+
+        this._cone_colour = '#ffff00';
     }
 
     point_of_event(event) {
@@ -33,6 +35,8 @@ class Camera {
 
     set_path_width(width) { this._path_width = width; }
     set_path_colour(colour) { this._path_colour = colour; }
+
+    set_cone_colour(colour) { this._cone_colour = colour; }
 
     compute_weight_colours(map) {
         this._weight_to_colour = {};
@@ -145,6 +149,32 @@ class Camera {
             this._ctx.strokeStyle = this._path_colour;
             this._ctx.lineWidth = this._path_width;
             this.draw_vector(point, Vector.from_points(point, p.end_point));
+        }
+    }
+
+    draw_cone(cone) {
+        const root = cone.root;
+        const edges = cone.edges;
+        const in_1 = cone.in_1;
+        const in_2 = cone.in_2;
+        let path_1 = Path.throw_ray(root, in_1, edges, true)[1];
+        let path_2 = Path.throw_ray(root, in_2, edges, true)[1];
+
+        while (!path_1.is_empty) {
+            const p1 = path_1.end_point;
+            const p2 = path_2.end_point;
+            path_1 = path_1.prefix;
+            path_2 = path_2.prefix;
+            const p3 = path_1.end_point;
+            const p4 = path_2.end_point;
+            this._ctx.fillStyle = this._cone_colour;
+            this._move_to(p1);
+            this._ctx.beginPath();
+            this._line_to(p2);
+            this._line_to(p4);
+            this._line_to(p3);
+            this._line_to(p1);
+            this._ctx.fill();
         }
     }
 }

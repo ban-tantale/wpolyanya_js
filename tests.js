@@ -128,3 +128,11 @@ function test_relative_click(event) {
     }
 
 }
+
+// Function that tests the drawing of cones
+function test_cone_click(event) {
+    const point = camera.point_of_event(event);
+    const poly = map.containing_poly(point);
+    const cone = Cone.init(point, poly.edges[0]);
+    camera.draw_cone(cone);
+}
