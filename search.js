@@ -40,7 +40,7 @@ class Cone extends Node {
 
     static ex(cone, edge) {
         // TODO: Is it really necessary to make a special case here?
-        if (edge == cone.edges[cone.edges.length - 1].opposite) { return null; }
+        if (edge == cone.last_edge.opposite) { return null; }
 
         const result = new Cone();
         result._root = cone.root;
@@ -140,6 +140,7 @@ class ICone extends Node {
         this._in_2 = null;
         this._angle = null;
         this._edges = null;
+        this._starting_edge = null;
     }
 
     get root() { return this._root; }
@@ -149,6 +150,10 @@ class ICone extends Node {
     get in_2() { return this._in_2; }
     get angle() { return this._angle; }
     get edges() { return this._edges; }
+    get last_edge() {
+        if (this._edges.length == 0) { return this._starting_edge; }
+        return this._edges[this._edges.length - 1];
+    }
 
     static forward_init(edge, point) {
         const icone = new ICone();
@@ -159,6 +164,8 @@ class ICone extends Node {
         icone._in_2 = edge.v2;
         icone._angle = edge._forward_critical_angle;
         icone._edges = [];
+        icone._starting_edge = edge;
+
         return icone;
     }
 
@@ -171,15 +178,14 @@ class ICone extends Node {
         icone._in_2 = edge.v1;
         icone._angle = edge._backward_critical_angle;
         icone._edges = [];
+        icone._starting_edge = edge;
         return icone;
     }
 
     static ex(icone, edge) {
         // TODO: Is it really necessary to make a special case here?
-        if (icone.edges.length > 0) {
-            if (edge == icone.edges[icone.edges.length - 1].opposite) { return null; }
-        }
-        
+        if (edge == icone.last_edge.opposite) { return null; }
+
         const result = new ICone();
         result._root = icone._root;
         result._out_1 = icone._out_1;
@@ -187,10 +193,11 @@ class ICone extends Node {
         result._out_2 = icone._out_2;
         result._in_2 = icone._in_2;
         result._angle = icone._angle;
+        result._starting_edge = icone._starting_edge;
 
         result._edges = icone._edges.slice();
         result._edges.push(edge);
-        
+
         if (result._refine()) {
             return result;
         } else {
@@ -251,5 +258,20 @@ class ICone extends Node {
         }
 
         return true;
+    }
+
+    get successors() {
+        const result = [];
+        const oppo = this.last_edge.opposite;
+        if (oppo != null) {
+            const poly = oppo.poly;
+            poly.edges.forEach(edge => {
+                const new_icone = ICone.ex(this, edge);
+                if (new_icone != null) {
+                    result.push(new_icone);
+                }
+            });
+        }
+        return result;
     }
 }
