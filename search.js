@@ -48,14 +48,15 @@ class Cone extends Node {
         result._in_1 = cone._in_1;
         result._out_2 = cone._out_2;
         result._in_2 = cone._in_2;
+
         result._edges = cone._edges.slice();
         result._edges.push(edge);
+
         if (result._refine()) {
             return result;
         } else {
             return null;
         }
-
     }
 
     _refine() {
@@ -126,5 +127,129 @@ class Cone extends Node {
             });
         }
         return result;
+    }
+}
+
+class ICone extends Node {
+    constructor() {
+        super();
+        this._root = null;
+        this._out_1 = null;
+        this._in_1 = null;
+        this._out_2 = null;
+        this._in_2 = null;
+        this._angle = null;
+        this._edges = null;
+    }
+
+    get root() { return this._root; }
+    get out_1() { return this._out_1; }
+    get out_2() { return this._out_2; }
+    get in_1() { return this._in_1; }
+    get in_2() { return this._in_2; }
+    get angle() { return this._angle; }
+    get edges() { return this._edges; }
+
+    static forward_init(edge, point) {
+        const icone = new ICone();
+        icone._root = point;
+        icone._out_1 = point;
+        icone._in_1 = point;
+        icone._out_2 = edge.v2;
+        icone._in_2 = edge.v2;
+        icone._angle = edge._forward_critical_angle;
+        icone._edges = [];
+        return icone;
+    }
+
+    static backward_init(edge, point) {
+        const icone = new ICone();
+        icone._root = point;
+        icone._out_1 = point;
+        icone._in_1 = point;
+        icone._out_2 = edge.v1;
+        icone._in_2 = edge.v1;
+        icone._angle = edge._backward_critical_angle;
+        icone._edges = [];
+        return icone;
+    }
+
+    static ex(icone, edge) {
+        // TODO: Is it really necessary to make a special case here?
+        if (icone.edges.length > 0) {
+            if (edge == icone.edges[icone.edges.length - 1].opposite) { return null; }
+        }
+        
+        const result = new ICone();
+        result._root = icone._root;
+        result._out_1 = icone._out_1;
+        result._in_1 = icone._in_1;
+        result._out_2 = icone._out_2;
+        result._in_2 = icone._in_2;
+        result._angle = icone._angle;
+
+        result._edges = icone._edges.slice();
+        result._edges.push(edge);
+        
+        if (result._refine()) {
+            return result;
+        } else {
+            return null;
+        }
+    }
+
+    _refine() {
+        // Returns false if it cannot be refined
+        {
+            const pos = Path.throw_ray(this._out_1, this._angle, this._edges, false)[0];
+            if (pos == Position.AFTER) {
+                return false;
+            }
+        }
+        {
+            const pos = Path.throw_ray(this._out_2, this._angle, this._edges, false)[0];
+            if (pos == Position.BEFORE) {
+                return false;
+            }
+        }
+
+        const MAX_IT = 1000; // for safety; should not be necessary
+        {
+            let p1 = this.out_1;
+            let p2 = this.in_2;
+            let it = 0;
+            while ((!p1.close_to(p2)) && (it < MAX_IT)) {
+                it += 1;
+                const p = Point.centre(p1, p2);
+                const pos = Path.throw_ray(p, this._angle, this._edges, false)[0];
+                if (pos == Position.BEFORE) {
+                    p1 = p;
+                } else {
+                    p2 = p;
+                }
+            }
+            this._out_1 = p1;
+            this._in_1 = p2;
+        }
+
+        {
+            let p1 = this.in_1;
+            let p2 = this.out_2;
+            let it = 0;
+            while ((!p1.close_to(p2)) && (it < MAX_IT)) {
+                it += 1;
+                const p = Point.centre(p1, p2);
+                const pos = Path.throw_ray(p, this._angle, this._edges, false)[0];
+                if (pos == Position.AFTER) {
+                    p2 = p;
+                } else {
+                    p1 = p;
+                }
+            }
+            this._in_2 = p1;
+            this._out_1 = p2;
+        }
+
+        return true;
     }
 }

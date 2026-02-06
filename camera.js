@@ -177,5 +177,32 @@ class Camera {
             this._ctx.fill();
         }
     }
+
+
+    draw_icone(icone) {
+        const angle = icone.angle;
+        const edges = icone.edges;
+        const in_1 = icone.in_1;
+        const in_2 = icone.in_2;
+        let path_1 = Path.throw_ray(in_1, angle, edges, true)[1];
+        let path_2 = Path.throw_ray(in_2, angle, edges, true)[1];
+
+        while (!path_1.is_empty) {
+            const p1 = path_1.end_point;
+            const p2 = path_2.end_point;
+            path_1 = path_1.prefix;
+            path_2 = path_2.prefix;
+            const p3 = path_1.end_point;
+            const p4 = path_2.end_point;
+            this._ctx.fillStyle = this._cone_colour;
+            this._move_to(p1);
+            this._ctx.beginPath();
+            this._line_to(p2);
+            this._line_to(p4);
+            this._line_to(p3);
+            this._line_to(p1);
+            this._ctx.fill();
+        }
+    }
 }
 

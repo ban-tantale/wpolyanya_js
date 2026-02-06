@@ -11,7 +11,7 @@
     <script src="maps.js"></script>
     <script src="geometry.js"></script>
     <script src="camera.js"></script>
-    <script src="test_cone.js"></script>
+    <script src="test_icone.js"></script>
     <script src="search.js"></script>
     <script>
 
@@ -27,7 +27,7 @@
         function click(event) {
             const p = camera.point_of_event(event);
             log('Click: ' + p);
-            test_click2(event);
+            test_click(event);
         }
         canvas.addEventListener('click', click);
 

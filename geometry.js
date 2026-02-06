@@ -7,6 +7,7 @@ const Position = {
 };
 const EPSILON_EQUALS = 0.01;
 
+_point_difference = 0.000001;
 class Point {
     constructor(x, y) {
         this._x = x;
@@ -59,6 +60,16 @@ class Point {
         const dx = p1.x - p2.x;
         const dy = p1.y - p2.y;
         return Math.sqrt((dx * dx) + (dy * dy));
+    }
+
+    static centre(p1, p2) {
+        return new Point((p1._x + p2._x) / 2, (p1._y + p2._y) / 2);
+    }
+
+    close_to(other_point) {
+        const result = (Math.abs(this.dx - other_point.dx) < _point_difference)
+            && (Math.abs(this.dy - other_point.dy) < _point_difference);
+        return result;
     }
 }
 
@@ -127,6 +138,22 @@ class Vector {
         return "&lt;" + this.dx + "," + this.dy + "&gt;";
     }
 
+    static combination(vector_params) {
+        // Input = [[vector1, alpha1], ..., [vectork, alphak]]
+        // such that `square(alpha1) + ... + square(alpha_k) = 1`
+        // output = alpha1 * vector1 + ... + alphak * vectork.
+        let x = 0;
+        let y = 0;
+        vector_params.forEach(element => {
+            const vector = element[0];
+            const alpha = element[1];
+            x += vector.dx * alpha;
+            y += vector.dy * alpha;
+        });
+        return new Vector(x, y);
+        //        return null;
+    }
+
     towards(edge) {
         // Assuming coming from the right of the edge,
         // returns whether the vertex is moving towards the line of this edge
@@ -164,7 +191,7 @@ class Line {
 }
 
 class Edge {
-    constructor(v1, v2) {
+    constructor(v1, v2, poly) {
         this._v1 = v1;
         this._v2 = v2;
         this._vector = Vector.from_points(v1, v2);
@@ -173,15 +200,34 @@ class Edge {
         v1.add_out(this);
         v2.add_in(this);
         this._opposite = null; // The opposite edge
-        this._poly = null; // The polygon on the right
+        this._poly = poly; // The polygon on the right
         this._line = new Line(v1, v2);
+        this._forward_critical_angle = null;
+        this._backward_critical_angle = null;
 
         // checks if the opposite edge exists
         for (let i = 0; i < v1.in.length; i++) {
-            const e = v1.in[i];
-            if (e.v1 == v2) {
-                this._opposite = e;
-                e._opposite = this;
+            const edge = v1.in[i];
+            if (edge.v1 == v2) { // `this` is the opposite of `e`
+                this._opposite = edge;
+                edge._opposite = this;
+                const this_weight = this._poly.weight;
+                const edge_weight = edge.poly.weight;
+                if (this_weight != edge_weight) {
+                    let change_edge = this; // the edge with critical angle
+                    let sin = edge_weight / this_weight;
+                    if (this_weight < edge_weight) {
+                        change_edge = edge;
+                        sin = this_weight / edge_weight;
+                    }
+                    let cos = Math.sqrt(1 - sin * sin);
+                    change_edge._forward_critical_angle = Vector.combination(
+                        [[change_edge.vector, cos], [change_edge._ortho, sin]]
+                    );
+                    change_edge._backward_critical_angle = Vector.combination(
+                        [[change_edge.vector, -cos], [change_edge._ortho, sin]]
+                    );
+                }
                 break;
             }
         }
@@ -189,12 +235,11 @@ class Edge {
 
     get v1() { return this._v1; }
     get v2() { return this._v2; }
+    get centre() { return new Point((this.v1.x + this.v2.x) / 2, (this.v1.y + this.v2.y) / 2); }
     get vector() { return this._vector; }
     get poly() { return this._poly; }
     get opposite() { return this._opposite; }
     toString() { return "(" + this.v1 + "," + this.v2 + ")"; }
-
-    set_poly(p) { this._poly = p; }
 
     intersection(point, vector) {
         // Returns the intersection on the line represented by this edge
@@ -253,9 +298,8 @@ class Polygon {
         for (let i = 0; i < nb_vertices; i++) { // TODO: replace with forEach
             const v1 = vertices[i];
             const v2 = vertices[(i + 1) % nb_vertices];
-            const e = new Edge(v1, v2);
+            const e = new Edge(v1, v2, this);
             this._edges.push(e);
-            e.set_poly(this);
         }
     }
     get weight() { return this._weight; }
