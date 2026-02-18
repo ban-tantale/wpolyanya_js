@@ -137,6 +137,7 @@ class Vector {
     get to_html() {
         return "&lt;" + this.dx + "," + this.dy + "&gt;";
     }
+    toString() { return "&lt;" + this.dx.toFixed(5) + "," + this.dy.toFixed(5) + "&gt;"; }
 
     static combination(vector_params) {
         // Input = [[vector1, alpha1], ..., [vectork, alphak]]
@@ -364,6 +365,7 @@ class Path {
         this._end_point = null;
         this._cost = null;
         this._prefix = null;
+        this._last_polygon = null;
     }
 
     get cost() { return this._cost; }
@@ -371,11 +373,19 @@ class Path {
     get is_empty() { return this._prefix == null; }
     get prefix() { return this._prefix; }
 
+    toString() {
+        if (this.is_empty) {
+            return "[> " + this.end_point;
+        }
+        return this.prefix.toString() + " --&gt; " + this.end_point;
+    }
+
     static from_point(point) {
         const result = new Path();
         result._end_point = point;
         result._cost = 0.0;
         result._prefix = null;
+        result._last_polygon = null;
         return result;
     }
 
@@ -384,6 +394,7 @@ class Path {
         result._end_point = point;
         result._cost = path.cost + (poly.weight * Point.distance(path.end_point, point));
         result._prefix = path;
+        result._last_polygon = poly;
         return result;
     }
 
@@ -406,7 +417,6 @@ class Path {
                 }
                 return [Position.BEFORE, null];
             }
-
 
             current_point = edge.intersection(current_point, current_direction);
 
@@ -439,5 +449,54 @@ class Path {
         } else {
             return [current_position, current_point];
         }
+    }
+
+    static throw_ray_at_point(root, direction, edges, target) {
+        // `target` is supposed to be *after* the last edges
+        // Returns BEFORE or AFTER
+
+        let current_point = root;
+        let current_direction = direction;
+
+        for (let edge_idx = 0; edge_idx < edges.length; edge_idx++) {
+            const edge = edges[edge_idx];
+
+            // If the ray if not towards the edge, it is either BEFORE or AFTER
+            if (!current_direction.towards(edge)) {
+                if (current_direction.scalar_product(edge.vector) > 0) {
+                    return Position.AFTER;
+                }
+                return Position.BEFORE;
+            }
+
+            current_point = edge.intersection(current_point, current_direction);
+
+            {
+                const current_position = current_point.relative_position(edge);
+                if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+                    return current_position;
+                }
+            }
+
+            const th = edge.through(current_direction);
+            const current_position = th[0];
+            current_direction = th[1];
+            // current_position, current_direction = edge.through(current_direction);
+            if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+                return current_position;
+            }
+        }
+
+        const vec1 = Vector.from_points(current_point, target);
+        if (current_direction.cross_product(vec1) < 0) {
+            return Position.BEFORE;
+        }
+        return Position.AFTER;
+    }
+
+    concat(suffix) {
+        if (suffix._prefix == null) { return this; }
+        const prefix = this.concat(suffix._prefix);
+        return Path.ex(prefix, suffix._end_point, suffix._last_polygon);
     }
 }

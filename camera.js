@@ -143,6 +143,7 @@ class Camera {
         let p = path;
         while (true) {
             const point = p.end_point;
+            this.set_point_colour(this._path_colour);
             this.draw_point(point);
             if (p.is_empty) { break; }
             p = p.prefix;
@@ -177,7 +178,6 @@ class Camera {
             this._ctx.fill();
         }
     }
-
 
     draw_icone(icone) {
         const angle = icone.angle;

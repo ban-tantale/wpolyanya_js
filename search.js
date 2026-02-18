@@ -1,16 +1,23 @@
 // Different types of search nodes
 
 class Node {
-    constructor() {
+    constructor(path) { // Path to the root of the node.
+        this._path = path;
     }
+
+    get path() {
+        return this._path;
+    }
+
     successors(target, target_poly) {
-        throw new Error("successor not implemented.");
+        alert('Successors not implemented.')
+        throw new Error("successors not implemented.");
     }
 }
 
 class Cone extends Node {
-    constructor() {
-        super();
+    constructor(path) {
+        super(path);
         this._root = null;
         this._out_1 = null;
         this._in_1 = null;
@@ -27,8 +34,8 @@ class Cone extends Node {
     get edges() { return this._edges; }
     get last_edge() { return this._edges[this._edges.length - 1]; }
 
-    static init(root, edge) {
-        const result = new Cone();
+    static init(root, edge, path) {
+        const result = new Cone(path);
         result._root = root;
         result._out_1 = Vector.from_points(root, edge.v1);
         result._in_1 = Vector.from_points(root, edge.v1);
@@ -42,7 +49,7 @@ class Cone extends Node {
         // TODO: Is it really necessary to make a special case here?
         if (edge == cone.last_edge.opposite) { return null; }
 
-        const result = new Cone();
+        const result = new Cone(cone.path);
         result._root = cone.root;
         result._out_1 = cone._out_1;
         result._in_1 = cone._in_1;
@@ -114,8 +121,42 @@ class Cone extends Node {
         return true;
     }
 
-    get successors() {
+    target_successor(target, target_poly) {
+        {
+            const last_edge = this.last_edge;
+            if (last_edge.opposite == null) { return null; }
+            const next_poly = last_edge.opposite.poly;
+            if (target_poly != next_poly) { return null; }
+        }
+
+        if (Path.throw_ray_at_point(this.root, this.in_1, this.edges, target) == Position.AFTER) {
+            return null;
+        }
+
+        if (Path.throw_ray_at_point(this.root, this.in_2, this.edges, target) == Position.BEFORE) {
+            return null;
+        }
+
+        let v1 = this.in_1;
+        let v2 = this.in_2;
+        while (!v1.close_to(v2)) {
+            const v = Vector.bissection(v1, v2);
+            if (Path.throw_ray_at_point(this.root, v, this.edges, target) == Position.BEFORE) {
+                v1 = v;
+            } else {
+                v2 = v;
+            }
+        }
+
+        let path = Path.throw_ray(this.root, v1, this.edges, true)[1];
+        path = this.path.concat(path);
+        path = Path.ex(path, target, target_poly);
+        return new ZCone(path);
+    }
+
+    successors(target, target_poly) {
         const result = [];
+
         const oppo = this.last_edge.opposite;
         if (oppo != null) {
             const poly = oppo.poly;
@@ -126,13 +167,23 @@ class Cone extends Node {
                 }
             });
         }
+
+        {
+            const tg = this.target_successor(target, target_poly);
+            if (tg != null) {
+                result.push(tg);
+            }
+        }
+
+        // TODO: ZCone (left & right), ICones (left & right), ZCone (target)
+
         return result;
     }
 }
 
 class ICone extends Node {
-    constructor() {
-        super();
+    constructor(path) {
+        super(path);
         this._root = null;
         this._out_1 = null;
         this._in_1 = null;
@@ -155,8 +206,8 @@ class ICone extends Node {
         return this._edges[this._edges.length - 1];
     }
 
-    static forward_init(edge, point) {
-        const icone = new ICone();
+    static forward_init(edge, point, path) {
+        const icone = new ICone(path);
         icone._root = point;
         icone._out_1 = point;
         icone._in_1 = point;
@@ -169,8 +220,8 @@ class ICone extends Node {
         return icone;
     }
 
-    static backward_init(edge, point) {
-        const icone = new ICone();
+    static backward_init(edge, point, path) {
+        const icone = new ICone(path);
         icone._root = point;
         icone._out_1 = point;
         icone._in_1 = point;
@@ -186,7 +237,7 @@ class ICone extends Node {
         // TODO: Is it really necessary to make a special case here?
         if (edge == icone.last_edge.opposite) { return null; }
 
-        const result = new ICone();
+        const result = new ICone(icone.path);
         result._root = icone._root;
         result._out_1 = icone._out_1;
         result._in_1 = icone._in_1;
@@ -260,8 +311,9 @@ class ICone extends Node {
         return true;
     }
 
-    get successors() {
+    successors(target, target_poly) {
         const result = [];
+
         const oppo = this.last_edge.opposite;
         if (oppo != null) {
             const poly = oppo.poly;
@@ -272,6 +324,22 @@ class ICone extends Node {
                 }
             });
         }
+
+        // TODO: Cone (?), ZCone (left, right, & target)
+
         return result;
     }
+}
+
+class ZCone extends Node {
+    constructor(path) {
+        super(path);
+    }
+
+    successors(target, target_poly) {
+        // TODO
+        return [];
+    }
+
+    toString() { return "ZCone"; }
 }
