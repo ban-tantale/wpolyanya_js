@@ -14,6 +14,11 @@ class Camera {
         this._point_width = 2;
         this._point_colour = "#FF0000";
 
+        this._vector_colour = "#FFFF00";;
+
+        this._edge_width = 2;
+        this._edge_colour = "#FF00FF";
+
         this._poly_colour = null;
 
         this._path_width = 1;
@@ -32,6 +37,8 @@ class Camera {
     set_point_colour(colour) { this._point_colour = colour; }
     set_point_width(width) { this._point_width = width; }
     set_poly_colour(colour) { this._poly_colour = colour; }
+
+    set_vector_colour(colour) { this._vector_colour = colour; }
 
     set_path_width(width) { this._path_width = width; }
     set_path_colour(colour) { this._path_colour = colour; }
@@ -106,10 +113,26 @@ class Camera {
     }
 
     draw_vector(point, vector) {
-        this._ctx.fillStyle = "#FFFF00";
+        this._ctx.strokeStyle = this._vector_colour;
         this._ctx.beginPath();
         this._move_to(point);
         this._line_to(vector.translate(point));
+        this._ctx.stroke();
+    }
+
+    draw_line(point1, point2) {
+        this._ctx.beginPath();
+        this._move_to(point1);
+        this._line_to(point2);
+        this._ctx.stroke();
+    }
+
+    draw_edge(edge) {
+        this._ctx.lineWidth = this._edge_width;
+        this._ctx.strokeStyle = this._edge_colour;
+        this._ctx.beginPath();
+        this._move_to(edge.v1);
+        this._line_to(edge.v2);
         this._ctx.stroke();
     }
 
@@ -149,7 +172,7 @@ class Camera {
             p = p.prefix;
             this._ctx.strokeStyle = this._path_colour;
             this._ctx.lineWidth = this._path_width;
-            this.draw_vector(point, Vector.from_points(point, p.end_point));
+            this.draw_line(point, p.end_point);
         }
     }
 
@@ -203,6 +226,12 @@ class Camera {
             this._line_to(p1);
             this._ctx.fill();
         }
+    }
+
+    draw_xcone(xcone) {
+        if (xcone.is_cone()) { this.draw_cone(xcone); }
+        if (xcone.is_icone()) { this.draw_icone(xcone); }
+        // if (xcone.is_zcone()) { this.draw_zcone(xcone); }
     }
 }
 
