@@ -24,6 +24,7 @@ class Camera {
         this._path_width = 1;
         this._path_colour = '#000000';
 
+        this._draw_edges_in_cones = true;
         this._cone_colour = '#ffff00';
     }
 
@@ -183,6 +184,12 @@ class Camera {
         const in_2 = cone.in_2;
         let path_1 = Path.throw_ray(root, in_1, edges, true)[1];
         let path_2 = Path.throw_ray(root, in_2, edges, true)[1];
+
+        if (this._draw_edges_in_cones) {
+            cone.edges.forEach(edge => {
+                this.draw_edge(edge);
+            });
+        }
 
         while (!path_1.is_empty) {
             const p1 = path_1.end_point;
