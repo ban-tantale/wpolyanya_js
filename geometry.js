@@ -7,7 +7,7 @@ const Position = {
 };
 const EPSILON_EQUALS = 0.01;
 
-_point_difference = 0.000001;
+_point_difference = 0.0001;
 class Point {
     constructor(x, y) {
         this._x = x;
@@ -15,7 +15,7 @@ class Point {
     }
     get x() { return this._x; }
     get y() { return this._y; }
-    toString() { return "&lt;" + this.x + "," + this.y + "&gt;"; }
+    toString() { return "&lt;" + this.x.toFixed(5) + "," + this.y.toFixed(5) + "&gt;"; }
 
     right_of(edge) {
         let v2 = Vector.from_points(edge.v1, this);
@@ -67,8 +67,8 @@ class Point {
     }
 
     close_to(other_point) {
-        const result = (Math.abs(this.dx - other_point.dx) < _point_difference)
-            && (Math.abs(this.dy - other_point.dy) < _point_difference);
+        const result = (Math.abs(this.x - other_point.x) < _point_difference)
+            && (Math.abs(this.y - other_point.y) < _point_difference);
         return result;
     }
 }
@@ -85,7 +85,7 @@ class Vertex extends Point {
     add_in(e) { this._in.push(e); }
 }
 
-_vector_difference = 0.000001;
+_vector_difference = 0.000000001;
 class Vector {
     constructor(dx, dy) {
         this._dx = dx;
@@ -94,12 +94,14 @@ class Vector {
 
     static from_points(p1, p2) {
         const result = new Vector(p2.x - p1.x, p2.y - p1.y);
-        result.normalise();
+        result._normalise();
         return result;
     }
 
     static bissection(vec1, vec2) {
-        return new Vector((vec1.dx + vec2.dx) / 2, (vec1.dy + vec2.dy) / 2);
+        const result = new Vector((vec1.dx + vec2.dx) / 2, (vec1.dy + vec2.dy) / 2);
+        result._normalise();
+        return result;
     }
 
     close_to(other_vector) {
@@ -111,7 +113,7 @@ class Vector {
     get dx() { return this._dx; }
     get dy() { return this._dy; }
 
-    normalise() {
+    _normalise() {
         const distance = Math.sqrt((this._dx * this._dx) + (this._dy * this._dy));
         this._dx = this._dx / distance;
         this._dy = this._dy / distance;
@@ -191,12 +193,13 @@ class Line {
     }
 }
 
+_all_edges = []
 class Edge {
     constructor(v1, v2, poly) {
+        _all_edges.push(this);
         this._v1 = v1;
         this._v2 = v2;
         this._vector = Vector.from_points(v1, v2);
-        this._vector.normalise();
         this._ortho = new Vector(-this._vector.dy, this._vector.dx);
         v1.add_out(this);
         v2.add_in(this);
@@ -289,6 +292,17 @@ class Edge {
             (c2 * this._vector.dx + s2 * this._ortho.dx)
         )];
     }
+
+    get index() {
+        // Note: using a list because we do not expect this method to be called much
+        for (let result = 0 ; result < _all_edges.length ; result++) {
+            if (_all_edges[result] == this) { return result; }
+        }
+        return -1;
+    }
+    static of_index(index) {
+        return _all_edges[index];
+    }
 }
 
 class Polygon {
@@ -314,6 +328,14 @@ class Polygon {
             }
         }
         return true;
+    }
+    edge_index(edge) {
+        for (let i = 0 ; i < this._edges.length ; i++) {
+            if (this._edges[i] == edge) {
+                return i;
+            }
+        }
+        return -1;
     }
 }
 
@@ -451,6 +473,11 @@ class Path {
         }
     }
 
+    static path_from_ray(root, direction, edges) {
+        // Returns the path from throwing the ray.
+        return this.throw_ray(root, direction, edges, true)[1];
+    }
+
     static throw_ray_at_point(root, direction, edges, target) {
         // `target` is supposed to be *after* the last edges
         // Returns BEFORE or AFTER
@@ -499,4 +526,22 @@ class Path {
         const prefix = this.concat(suffix._prefix);
         return Path.ex(prefix, suffix._end_point, suffix._last_polygon);
     }
+}
+
+function check_if_ray_can_cross_edge(direction, edges) {
+    // Returns BEFORE, INSIDE, or AFTER
+    // Assumes that the different segments are moving towards the edges, but might fall on the left or the right
+    let current_direction = direction;
+
+    for (let edge_id = 0 ; edge_id < edges.length ; edge_id++) {
+        const edge = edges[edge_id];
+        const th = edge.through(current_direction);
+        current_position = th[0];
+        if ((current_position == Position.BEFORE) || (current_position == Position.AFTER)) {
+            return current_position;
+        }
+        current_direction = th[1];
+    }
+
+    return Position.INSIDE;
 }

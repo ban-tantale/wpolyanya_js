@@ -2,7 +2,8 @@
 <html>
 
 <body>
-    <canvas id="myCanvas" width="800" height="6s00" style="border:1px solid grey"></canvas>
+    <div id="error" style="color:red"></div>
+    <canvas id="myCanvas" width="800" height="6s00" style="border:thick solid grey; float:left"></canvas>
 
     <div id="debug"></div>
     <div id="log" style="border-style: dotted;"></div>
@@ -11,7 +12,7 @@
     <script src="maps.js"></script>
     <script src="geometry.js"></script>
     <script src="camera.js"></script>
-    <script src="test_aim.js"></script>
+    <script src="test_succs.js"></script>
     <script src="search.js"></script>
     <script>
 
@@ -25,9 +26,16 @@
         camera.set_path_width(5);
 
         function click(event) {
-            const p = camera.point_of_event(event);
-            log('Click: ' + p);
-            test_click(event);
+            const canvas = document.getElementById('myCanvas');
+            canvas.style.border = "thick solid #ff0000";
+            try {
+                const p = camera.point_of_event(event);
+                log('Click: ' + p);
+                test_click(event);
+                canvas.style.border = "thick solid grey";
+            } catch (e) {
+                debug_error("Error: " + e);
+            }
         }
         canvas.addEventListener('click', click);
 

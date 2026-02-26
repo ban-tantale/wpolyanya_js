@@ -8,6 +8,11 @@ function debug_warning(s) {
     div.innerHTML += "<p style=\"background-color:#FFbbbb;\">" + s + "</p>";
 }
 
+function debug_error(s) {
+    const div = document.getElementById('error');
+    div.innerHTML += "<p style=\"background-color:#FFbbbb;\">" + s + "</p>";
+}
+
 function log(s) {
     const div = document.getElementById('log');
     div.innerHTML += "<p>" + s + "</p>";
