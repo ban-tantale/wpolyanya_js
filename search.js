@@ -262,25 +262,24 @@ class Cone extends Node {
                     result.push(new_cone);
                 }
             }
+        }
 
-            // ZCones on the corners
-            const corner_and_directions = [
-                [this.last_edge.v1, this.in_1],
-                [this.last_edge.v2, this.in_2]
-            ];
-            for (const corner_and_direction of corner_and_directions) {
-                const corner = corner_and_direction[0];
-                const direction = corner_and_direction[1];
-                const th = Path.throw_ray(this.root, direction, this.edges, true);
-                let path = th[1];
-                if (path != null) {
-                    if (corner.close_to(path.end_point)) {
-                        // TODO: Should modify the path for it to get directly to corner
-                        path = this.path.concat(path);
-                        const direction = Vector.from_points(path.prefix.end_point, path.prefix.end_point);
-                        const zcone = ZCone.corner_zcone(path, this.last_edge, this.last_edge._incoming_poly, direction, corner);
-                        result.push(zcone);
-                    }
+        // ZCones on the corners
+        const corner_and_directions = [
+            [this.last_edge.v1, this.in_1],
+            [this.last_edge.v2, this.in_2]
+        ];
+        for (const corner_and_direction of corner_and_directions) {
+            const corner = corner_and_direction[0];
+            const direction = corner_and_direction[1];
+            const th = Path.throw_ray(this.root, direction, this.edges, true);
+            let path = th[1];
+            if (path != null) {
+                if (corner.close_to(path.end_point)) {
+                    // TODO: Should modify the path for it to get directly to corner
+                    path = this.path.concat(path);
+                    const zcone = ZCone.corner_zcone(path, this.last_edge, corner);
+                    result.push(zcone);
                 }
             }
         }
@@ -291,8 +290,6 @@ class Cone extends Node {
                 result.push(tg);
             }
         }
-
-        // TODO: ZCone (left & right), ICones (left & right), ZCone (target)
 
         return result;
     }
@@ -428,26 +425,128 @@ class ICone extends Node {
         return true;
     }
 
+    _refine_outside() {
+        // Refines this cone assuming the cone will not be super critical after the last edge.
+        // Assumes that the last edge has an opposite edge.
+        const last_edge = this.last_edge;
+        const opposite = last_edge.opposite;
+        if (opposite.poly.weight >= last_edge.poly.weight) { return; } // Only relevant if weight decreases
+        
+        // TODO:
+        // Should actually refine backward from the critical vector rather than using a dichotomy
+
+        { // left
+            let r1 = this.out_1;
+            let r2 = this.in_2;
+            while (!r1.close_to(r2)) {
+                const r = Point.centre(r1, r2);
+                if (check_if_ray_can_cross_edge(this.angle, this.edges) == Position.BEFORE) {
+                    r1 = r;
+                } else {
+                    r2 = r;
+                }
+            }
+            this._out_1 = r1;
+            this._in_1 = r2;
+        }
+
+        { // right
+            let r1 = this.in_1;
+            let r2 = this.out_2;
+            while (!r1.close_to(r2)) {
+                const r = Point.centre(r1, r2);
+                if (check_if_ray_can_cross_edge(this.angle, this.edges) == Position.AFTER) {
+                    r2 = r;
+                } else {
+                    r1 = r;
+                }
+            }
+            this._in_2 = r1;
+            this._out_2 = r2;
+        }
+    }
+
+    target_successor(target, target_poly) {
+        {
+            const last_edge = this.last_edge;
+            if (last_edge.opposite == null) { return null; }
+            const next_poly = last_edge.opposite.poly;
+            if (target_poly != next_poly) { return null; }
+        }
+
+        if (Path.throw_ray_at_point(this.in_1, this.angle, this.edges, target) == Position.AFTER) {
+            return null;
+        }
+
+        if (Path.throw_ray_at_point(this.in_2, this.angle, this.edges, target) == Position.BEFORE) {
+            return null;
+        }
+
+        let root1 = this.in_1;
+        let root2 = this.in_2;
+        while (!root1.close_to(root2)) {
+            const root = Point.centre(root1, root2);
+            if (Path.throw_ray_at_point(root, this.angle, this.edges, target) == Position.BEFORE) {
+                root1 = root;
+            } else {
+                root2 = root;
+            }
+        }
+
+        let path = Path.throw_ray(root1, this.angle, this.edges, true)[1];
+        path = Path.ex(this.path, root1, this.edges[0].poly).concat(path);
+        return ZCone.target_zcone(path);
+    }
+
     successors(target, target_poly) {
         const result = [];
-        return result;
 
-        /*
-        const oppo = this.last_edge.opposite;
-        if (oppo != null) {
-            const poly = oppo.poly;
-            poly.edges.forEach(edge => {
-                const new_icone = ICone.ex(this, edge);
-                if (new_icone != null) {
-                    result.push(new_icone);
+        {
+            const oppo = this.last_edge.opposite;
+            if (oppo != null) {
+                const poly = oppo.poly;
+                
+                // ICone
+                poly.edges.forEach(edge => {
+                    const new_icone = ICone.ex(this, edge);
+                    if (new_icone != null) {
+                        result.push(new_icone);
+                    }
+                });
+
+                // ZCone corners
+                const corner_and_roots = [
+                    [this.last_edge.v1, this.in_1],
+                    [this.last_edge.v2, this.in_2]
+                ];
+                for (const corner_and_root of corner_and_roots) {
+                    const corner = corner_and_root[0];
+                    const root = corner_and_root[1];
+                    const th = Path.throw_ray(root, this.angle, this.edges, true);
+                    const path = th[1];
+                    if (path != null) {
+                        if (corner.close_to(path.end_point)) {
+                            const p2 = Path.from_point(this._root);
+                            const p3 = Path.ex(p2, root, this._starting_edge.poly);
+                            const p = this.path.concat(p3).concat(path);
+                            const zcone = ZCone.corner_zcone(p, this.last_edge, corner);
+                            result.push(zcone);
+                        }
+                    }
                 }
-            });
+            }
+        }
+
+        {
+            const tg = this.target_successor(target, target_poly);
+            if (tg != null) {
+                result.push(tg);
+            }
         }
 
         // TODO: Cone (?), ZCone (left, right, & target)
 
         return result;
-        */
     }
     
     is_icone() { return true; }
@@ -483,9 +582,10 @@ class ZCone extends Node {
         return result;
     }
 
-    static corner_zcone(path, edge, poly, direction, corner) {
+    static corner_zcone(path, edge, corner) {
         const result = new ZCone(path);
-        result._incoming_poly = poly;
+        result._incoming_poly = edge.poly;
+        const direction = Vector.from_points(path.prefix.end_point, path.prefix.end_point);
         result._incoming_direction = direction;
         result._incoming_edge = edge;
         result._corner = corner;
@@ -506,9 +606,29 @@ class ZCone extends Node {
             // TODO: target in poly
             return result;
         }
+
+        // Corner cone
+        const result = [];
+        {
+            const corner = this._corner;
+            for (const out_edge of corner.out) {
+                const poly = out_edge.poly;
+                if (poly == null) { continue; }
+                //_incoming_poly
+                if (poly == this._incoming_poly) { continue; }
+                // if (poly == this._incoming_edge.poly) { continue; }
+                for (const edge of poly.edges) {
+                    if (edge.v1 == corner) { continue; }
+                    if (edge.v2 == corner) { continue; }
+                    const cone = Cone.init(corner, edge, this.path);
+                    result.push(cone);
+                }
+            }
+        }
         
-        // TODO: Complex successors
-        return [];
+        // TODO: ICones
+
+        return result;
     }
 
     toString() { return "ZCone"; }

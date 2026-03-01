@@ -79,10 +79,12 @@ class Vertex extends Point {
         this._out = [];
         this._in = [];
     }
+
     get out() { return this._out; }
     get in() { return this._in; }
     add_out(e) { this._out.push(e); }
     add_in(e) { this._in.push(e); }
+    toString() { return "Corner &lt;" + this.x.toFixed(5) + "," + this.y.toFixed(5) + "&gt;"; }
 }
 
 _vector_difference = 0.000000001;
@@ -412,6 +414,15 @@ class Path {
     }
 
     static ex(path, point, poly) {
+        if (path == null) {
+            debug_error("Null path!");
+        }
+        if (point == null) {
+            debug_error("Null point!");
+        }
+        if (poly == null) {
+            debug_error("Null poly!");
+        }
         const result = new Path();
         result._end_point = point;
         result._cost = path.cost + (poly.weight * Point.distance(path.end_point, point));
